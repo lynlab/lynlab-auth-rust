@@ -3,7 +3,7 @@ use nanoid;
 
 use schema::users;
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Queryable, Insertable)]
 #[table_name = "users"]
 pub struct User {
     pub id: String,
@@ -23,5 +23,10 @@ impl User {
         let hash = argon2rs::argon2i_simple(password, &salt).to_vec();
         
         (hash, salt.to_string())
+    }
+
+    pub fn verify_password(&self, password: &str) -> bool {
+        let hash = argon2rs::argon2i_simple(password, &self.password_salt).to_vec();
+        self.password_hash == hash
     }
 }

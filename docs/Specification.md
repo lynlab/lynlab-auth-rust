@@ -1,6 +1,8 @@
 # API Specification
 ## List
 
+  - GET /v1/me 
+  - POST /v1/login
   - POST /v1/register
 
 
@@ -15,11 +17,61 @@
   - `error` : Error code.
 
 
+## GET /v1/me
+
+Get user information.
+
+### Request
+
+```json
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+### Response
+
+  - **200 OK**
+    ```json
+    {
+      "id": "string",
+      "username": "string",
+      "email": "string"
+    }
+    ```
+  - **401 UNAUTHORIZED**
+
+
+## POST /v1/login
+
+Login user.
+
+### Request
+
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+### Response
+
+  - **200 OK**
+    ```json
+    {
+      "access_token": "string"
+    }
+    ```
+  - **401 UNAUTHORIZED**
+    - `AU0011` : No such username.
+    - `AU0012` : Invalid password.
+
+
+
 ## POST /v1/register
 
 Register new account.
 
-### Request Body
+### Request
 
 ```json
 {
