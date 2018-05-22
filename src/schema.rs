@@ -8,7 +8,8 @@ table! {
         access_token -> Nullable<Varchar>,
         access_token_valid_until -> Nullable<Datetime>,
         is_activated -> Bool,
-        activate_token -> Nullable<Varchar>,
-        activate_token_valid_until -> Nullable<Datetime>,
+        activation_token -> Nullable<Varchar>,
+        activation_token_valid_until -> Nullable<Datetime>,
+        activation_redirection_url -> Nullable<Varchar>,
     }
 }

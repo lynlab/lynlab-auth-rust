@@ -1,7 +1,8 @@
 # API Specification
 ## List
 
-  - GET /v1/me 
+  - GET /v1/activate/{token}
+  - GET /v1/me
   - POST /v1/login
   - POST /v1/register
 
@@ -17,6 +18,20 @@
   - `error` : Error code.
 
 
+## GET /v1/activate/{token}
+
+Activate the account.
+
+### Request
+
+  - `token`(string) : activation token.
+
+### Response
+
+  - **302 Found** : Account activated.
+  - **400 BAD REQUEST** : The activation token is invalid.
+
+
 ## GET /v1/me
 
 Get user information.
@@ -24,7 +39,7 @@ Get user information.
 ### Request
 
 ```json
-Authorization: Bearer YOUR_JWT_TOKEN
+Authorization: Bearer YOUR_ACCESS_TOKEN
 ```
 
 ### Response
@@ -77,9 +92,12 @@ Register new account.
 {
   "username": "string",
   "password": "string",
-  "email": "string"
+  "email": "string",
+  "redirection_url": "string"
 }
 ```
+
+  - `redirection_url` : URL to redirect after email activation.
 
 ### Response
   - **200 OK** : The account added successfully and the confirmation email sent.

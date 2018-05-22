@@ -15,8 +15,9 @@ pub struct User {
     pub access_token: Option<String>,
     pub access_token_valid_until: Option<NaiveDateTime>,
     pub is_activated: bool,
-    pub activate_token: Option<String>,
-    pub activate_token_valid_until: Option<NaiveDateTime>,
+    pub activation_token: Option<String>,
+    pub activation_token_valid_until: Option<NaiveDateTime>,
+    pub activation_redirection_url: Option<String>,
 }
 
 impl User {

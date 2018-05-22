@@ -10,8 +10,8 @@ use self::lettre_email::EmailBuilder;
 
 pub fn send_email(address: &str, subject: &str, body: &str) {
     let email = EmailBuilder::new()
-        .to((address, "LYnLab"))
-        .from("no-reply@lynlab.co.kr")
+        .to(address)
+        .from(("no-reply@lynlab.co.kr", "LYnLab"))
         .subject(subject)
         .text(body)
         .build()

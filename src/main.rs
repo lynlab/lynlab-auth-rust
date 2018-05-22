@@ -20,6 +20,7 @@ pub mod email;
 pub mod helpers;
 pub mod models;
 pub mod schema;
+pub mod templates;
 
 use actix_web::{server, App, AsyncResponder, Error, HttpMessage, HttpRequest, HttpResponse};
 use actix_web::middleware::Logger;
@@ -45,6 +46,7 @@ struct RegisterReqBody {
     username: String,
     password: String,
     email: String,
+    redirection_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,7 +59,7 @@ struct LoginReqBody {
 // Response bodies
 //
 #[derive(Debug, Serialize)]
-struct MeReqBody {
+struct MeResBody {
     id: String,
     username: String,
     email: String,
@@ -81,6 +83,47 @@ fn ping(_: HttpRequest<AppState>) -> HttpResponse {
     HttpResponse::Ok().body("pong")
 }
 
+/// Activate the account.
+fn activate(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
+    let token: String;
+    match req.match_info().query("token") {
+        Ok(t) => token = t,
+        Err(_) => {
+            return Ok(HttpResponse::BadRequest().finish());
+        }
+    };
+
+    let conn = req.state().pool.clone().get().unwrap();
+    let query = users::table
+        .filter(users::dsl::activation_token.eq(token))
+        .first::<User>(&*conn)
+        .optional();
+
+    match query {
+        Ok(Some(user)) => {
+            if user.activation_token_valid_until.unwrap() < Utc::now().naive_utc() {
+                Ok(HttpResponse::BadRequest().finish())
+            } else {
+                // Activate the account and return redirection url.
+                let update_result = diesel::update(users::table)
+                    .set(users::dsl::is_activated.eq(&true))
+                    .execute(&*conn);
+                
+                match update_result {
+                    Ok(_) => Ok(
+                        HttpResponse::Found()
+                            .header("Location", user.activation_redirection_url.unwrap())
+                            .finish()
+                    ),
+                    Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+                }
+            }
+        },
+        Ok(None) => Ok(HttpResponse::BadRequest().finish()),
+        Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+    }
+}
+
 /// Get user information.
 fn me(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
     let authorization = req.headers().get("authorization");
@@ -99,7 +142,7 @@ fn me(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
     match query {
         Ok(Some(user)) => {
             if user.is_activated {
-                Ok(HttpResponse::Ok().json(MeReqBody {
+                Ok(HttpResponse::Ok().json(MeResBody {
                     id: user.id,
                     username: user.username,
                     email: user.email,
@@ -154,7 +197,7 @@ fn login(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = 
 fn register(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
     let conn = req.state().pool.clone().get().unwrap();
     req.json().from_err().and_then(move |body: RegisterReqBody| {
-        let activate_token = nanoid::generate(16);
+        let activation_token = nanoid::generate(16);
 
         let (hash, salt) = User::make_password_hash(&body.password);
         let user = User {
@@ -166,8 +209,9 @@ fn register(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error
             access_token: None,
             access_token_valid_until: None,
             is_activated: false,
-            activate_token: Some(activate_token.to_string()),
-            activate_token_valid_until: Some(Utc::now().naive_utc() + Duration::hours(2)),
+            activation_token: Some(activation_token.to_string()),
+            activation_token_valid_until: Some(Utc::now().naive_utc() + Duration::hours(2)),
+            activation_redirection_url: Some(body.redirection_url),
         };
         
         let insert_result = diesel::insert_into(users::table)
@@ -176,7 +220,10 @@ fn register(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error
 
         match insert_result {
             Ok(_) => {
-                send_email(&user.email, &"인증 메일입니다.".to_string(), &activate_token);
+                let title = "LYnLab 계정 인증 메일입니다.".to_string();
+                let body = templates::email_body_activation(&activation_token);
+                send_email(&user.email, &title, &body);
+
                 Ok(HttpResponse::Ok().body("Ok"))
             },
             Err(e) => match e {
@@ -200,6 +247,7 @@ fn main() {
                 .middleware(Logger::default())
                 .prefix("/v1")
                 .resource("/ping", |r| r.get().f(ping))
+                .resource(r"/activate/{token}", |r| r.get().f(activate))
                 .resource("/me", |r| r.get().f(me))
                 .resource("/login", |r| r.post().f(login))
                 .resource("/register", |r| r.post().f(register))
