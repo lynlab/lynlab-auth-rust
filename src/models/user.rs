@@ -1,4 +1,5 @@
 use argon2rs;
+use chrono::NaiveDateTime;
 use nanoid;
 
 use schema::users;
@@ -12,7 +13,10 @@ pub struct User {
     pub password_salt: String,
     pub email: String,
     pub access_token: Option<String>,
+    pub access_token_valid_until: Option<NaiveDateTime>,
     pub is_activated: bool,
+    pub activate_token: Option<String>,
+    pub activate_token_valid_until: Option<NaiveDateTime>,
 }
 
 impl User {
