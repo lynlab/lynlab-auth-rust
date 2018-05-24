@@ -12,7 +12,6 @@ diesel = { version = "1.2", features = ["chrono", "mysql"] }
 env_logger = "0"
 futures = "0.1"
 json = "*"
-jsonwebtoken = "4"
 lettre = "0.8"
 lettre_email = "0.8"
 nanoid = "0.2"

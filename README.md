@@ -1,4 +1,7 @@
 # LYnLab Auth
+
+[![Build Status](https://travis-ci.org/lynlab/lynlab-auth.svg?branch=master)](https://travis-ci.org/lynlab/lynlab-auth)
+
 ## Prerequisites
 
   - Rust 1.24+

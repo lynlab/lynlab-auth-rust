@@ -1,0 +1,29 @@
+language: rust
+
+sudo: required
+
+services:
+  - docker
+
+install:
+  - echo "No install implemented."
+
+script:
+  - echo "No script implemented."
+
+after_success:
+  # Push only for push integrations, not pull request.
+  - if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
+      docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD";
+
+      docker build -t lynlab/auth:${TRAVIS_BRANCH} .;
+      docker push lynlab/auth:${TRAVIS_BRANCH};
+
+      docker build -t lynlab/auth:latest .;
+      docker push lynlab/auth:latest;
+
+      if [ -n "${TRAVIS_TAG}" ]; then
+        docker build -t lynlab/auth:${TRAVIS_TAG} .;
+        docker push lynlab/auth:${TRAVIS_TAG};
+      fi
+    fi

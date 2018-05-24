@@ -1,10 +1,12 @@
 # API Specification
 ## List
 
-  - GET /v1/activate/{token}
-  - GET /v1/me
-  - POST /v1/login
-  - POST /v1/register
+  - Public
+    - GET /v1/activate/{token}
+    - POST /v1/login
+    - POST /v1/register
+  - Private
+    - GET /v1/me
 
 
 ## Error Response Model
@@ -18,6 +20,8 @@
   - `error` : Error code.
 
 
+# Public APIs
+
 ## GET /v1/activate/{token}
 
 Activate the account.
@@ -30,29 +34,6 @@ Activate the account.
 
   - **302 Found** : Account activated.
   - **400 BAD REQUEST** : The activation token is invalid.
-
-
-## GET /v1/me
-
-Get user information.
-
-### Request
-
-```json
-Authorization: Bearer YOUR_ACCESS_TOKEN
-```
-
-### Response
-
-  - **200 OK**
-    ```json
-    {
-      "id": "string",
-      "username": "string",
-      "email": "string"
-    }
-    ```
-  - **401 UNAUTHORIZED**
 
 
 ## POST /v1/login
@@ -103,3 +84,29 @@ Register new account.
   - **200 OK** : The account added successfully and the confirmation email sent.
   - **400 BAD REQUEST** : Failed to register.
     - `AU0001` : Duplicated username or email.
+
+
+# Private APIs
+
+You must contain access token in headers.
+
+```
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+
+## GET /v1/me
+
+Get user information.
+
+### Response
+
+  - **200 OK**
+    ```json
+    {
+      "id": "string",
+      "username": "string",
+      "email": "string"
+    }
+    ```
+  - **401 UNAUTHORIZED**

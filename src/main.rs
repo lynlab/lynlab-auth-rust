@@ -1,5 +1,3 @@
-#![feature(custom_attribute)]
-
 extern crate actix;
 extern crate actix_web;
 extern crate argon2rs;
@@ -29,6 +27,7 @@ use diesel::result::Error::DatabaseError;
 use diesel::prelude::*;
 use email::send_email;
 use futures::Future;
+use helpers::api::*;
 use models::user::User;
 use schema::users;
 use time::Duration;
@@ -70,10 +69,6 @@ struct LoginResBody {
     access_token: String,
 }
 
-#[derive(Debug, Serialize)]
-struct ErrorResBody {
-    error: String,
-}
 
 //
 // Controllers
@@ -89,7 +84,7 @@ fn activate(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
     match req.match_info().query("token") {
         Ok(t) => token = t,
         Err(_) => {
-            return Ok(HttpResponse::BadRequest().finish());
+            return Ok(bad_request(""));
         }
     };
 
@@ -102,7 +97,7 @@ fn activate(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
     match query {
         Ok(Some(user)) => {
             if user.activation_token_valid_until.unwrap() < Utc::now().naive_utc() {
-                Ok(HttpResponse::BadRequest().finish())
+                Ok(bad_request(""))
             } else {
                 // Activate the account and return redirection url.
                 let update_result = diesel::update(users::table)
@@ -115,25 +110,30 @@ fn activate(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
                             .header("Location", user.activation_redirection_url.unwrap())
                             .finish()
                     ),
-                    Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+                    Err(_) => Ok(internal_server_error()),
                 }
             }
         },
-        Ok(None) => Ok(HttpResponse::BadRequest().finish()),
-        Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+        Ok(None) => Ok(bad_request("")),
+        Err(_) => Ok(internal_server_error()),
     }
 }
 
 /// Get user information.
 fn me(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
-    let authorization = req.headers().get("authorization");
-    if authorization.is_none() {
-        return Ok(HttpResponse::Unauthorized().finish());
-    }
+    let access_token: &str;
+    match req.headers().get("authorization") {
+        Some(authorization) => {
+            if authorization != "" {
+                access_token = authorization.to_str().unwrap().split_whitespace().last().unwrap();
+            } else {
+                return Ok(unauthorized(""));
+            }
+        },
+        _ => return Ok(unauthorized("")),
+    };
 
     let conn = req.state().pool.clone().get().unwrap();
-
-    let access_token = authorization.unwrap().to_str().unwrap().split_whitespace().last();
     let query = users::table
         .filter(users::dsl::access_token.eq(&access_token))
         .first::<User>(&*conn)
@@ -148,11 +148,11 @@ fn me(req: HttpRequest<AppState>) -> Result<HttpResponse, Error> {
                     email: user.email,
                 }))
             } else {
-                Ok(HttpResponse::Unauthorized().finish())
+                Ok(unauthorized(""))
             }
         },
-        Ok(None) => Ok(HttpResponse::Unauthorized().finish()),
-        Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+        Ok(None) => Ok(unauthorized("")),
+        Err(_) => Ok(internal_server_error()),
     }
 }
 
@@ -180,15 +180,15 @@ fn login(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = 
 
                         match update_result {
                             Ok(_) => Ok(HttpResponse::Ok().json(LoginResBody { access_token: new_token })),
-                            Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+                            Err(_) => Ok(internal_server_error()),
                         }
                     }
                 } else {
-                    Ok(HttpResponse::Unauthorized().json(ErrorResBody { error: "AU0012".to_string() }))
+                    Ok(unauthorized("AU0012"))
                 }
             },
-            Ok(None) => Ok(HttpResponse::Unauthorized().json(ErrorResBody { error: "AU0011".to_string() })),
-            Err(_) => Ok(HttpResponse::InternalServerError().finish()),
+            Ok(None) => Ok(unauthorized("AU0011")),
+            Err(_) => Ok(internal_server_error()),
         }
     }).responder()
 }
@@ -227,8 +227,8 @@ fn register(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error
                 Ok(HttpResponse::Ok().body("Ok"))
             },
             Err(e) => match e {
-                DatabaseError(_, _) => Ok(HttpResponse::BadRequest().json(ErrorResBody { error: "AU0001".to_string() })),
-                _ => Ok(HttpResponse::InternalServerError().finish()),
+                DatabaseError(_, _) => Ok(bad_request("AU0001")),
+                _ => Ok(internal_server_error()),
             },
         }
     }).responder()
