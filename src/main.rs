@@ -21,7 +21,8 @@ pub mod schema;
 pub mod templates;
 
 use actix_web::{server, App, AsyncResponder, Error, HttpMessage, HttpRequest, HttpResponse};
-use actix_web::middleware::Logger;
+use actix_web::middleware::{Logger};
+use actix_web::middleware::cors::Cors;
 use chrono::Utc;
 use diesel::result::Error::DatabaseError;
 use diesel::prelude::*;
@@ -245,12 +246,16 @@ fn main() {
     server::new(move || {
             App::with_state(AppState { pool: db_pool.clone() })
                 .middleware(Logger::default())
+                .configure(|app| Cors::for_app(app)
+                    .send_wildcard()
+                    .resource("/ping", |r| r.get().f(ping))
+                    .resource(r"/activate/{token}", |r| r.get().f(activate))
+                    .resource("/me", |r| r.get().f(me))
+                    .resource("/login", |r| r.post().f(login))
+                    .resource("/register", |r| r.post().f(register))
+                    .register()
+                )
                 .prefix("/v1")
-                .resource("/ping", |r| r.get().f(ping))
-                .resource(r"/activate/{token}", |r| r.get().f(activate))
-                .resource("/me", |r| r.get().f(me))
-                .resource("/login", |r| r.post().f(login))
-                .resource("/register", |r| r.post().f(register))
         })
         .bind("0.0.0.0:8080")
         .expect("Failed to start http server: 0.0.0.0:8080")
