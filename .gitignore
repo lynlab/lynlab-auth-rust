@@ -17,3 +17,6 @@ Cargo.lock
 
 # Sensitives
 .envrc
+
+secrets/**
+!secrets/.gitkeep

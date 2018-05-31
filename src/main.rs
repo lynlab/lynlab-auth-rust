@@ -29,6 +29,7 @@ use diesel::prelude::*;
 use email::send_email;
 use futures::Future;
 use helpers::api::*;
+use helpers::token::make_firebase_token;
 use models::user::User;
 use schema::users;
 use time::Duration;
@@ -53,6 +54,7 @@ struct RegisterReqBody {
 struct LoginReqBody {
     username: String,
     password: String,
+    services: Option<Vec<String>>,
 }
 
 //
@@ -68,6 +70,7 @@ struct MeResBody {
 #[derive(Debug, Serialize)]
 struct LoginResBody {
     access_token: String,
+    firebase_token: Option<String>,
 }
 
 
@@ -171,8 +174,18 @@ fn login(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = 
         match query {
             Ok(Some(user)) => {
                 if user.verify_password(&body.password) && user.is_activated {
+                    let firebase_token;
+                    if body.services.is_some() && body.services.unwrap().contains(&"firebase".to_string()) {
+                        firebase_token = Some(make_firebase_token(user.id));
+                    } else {
+                        firebase_token = None;
+                    }
+
                     if user.access_token.is_some() {
-                        Ok(HttpResponse::Ok().json(LoginResBody { access_token: user.access_token.unwrap() }))
+                        Ok(HttpResponse::Ok().json(LoginResBody { 
+                            access_token: user.access_token.unwrap(),
+                            firebase_token: firebase_token,
+                        }))
                     } else {
                         let new_token = nanoid::generate(64);
                         let update_result = diesel::update(users::table)
@@ -180,7 +193,10 @@ fn login(req: HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = 
                             .execute(&*conn);
 
                         match update_result {
-                            Ok(_) => Ok(HttpResponse::Ok().json(LoginResBody { access_token: new_token })),
+                            Ok(_) => Ok(HttpResponse::Ok().json(LoginResBody { 
+                                access_token: new_token,
+                                firebase_token: firebase_token,
+                            })),
                             Err(_) => Ok(internal_server_error()),
                         }
                     }

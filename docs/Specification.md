@@ -45,16 +45,21 @@ Login user.
 ```json
 {
   "username": "string",
-  "password": "string"
+  "password": "string",
+  "services": [ "string" ]
 }
 ```
+
+  - `services`
+    - `firebase` : include [firebase custom token](https://firebase.google.com/docs/auth/admin/create-custom-tokens).
 
 ### Response
 
   - **200 OK**
     ```json
     {
-      "access_token": "string"
+      "access_token": "string",
+      "firebase_token": "option(string)"
     }
     ```
   - **401 UNAUTHORIZED**

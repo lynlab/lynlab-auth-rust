@@ -7,6 +7,7 @@ authors = ["Do Hoerin <hellodhlyn@gmail.com>"]
 actix = "0.5"
 actix-web = "0.6"
 argon2rs = "0.2"
+biscuit = "0"
 chrono = "0.4"
 diesel = { version = "1.2", features = ["chrono", "mysql"] }
 env_logger = "0"
